@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <string>
 #include <iostream>
+#include <fstream>
 #include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
@@ -51,51 +52,9 @@ bool NextDialogue(size_t &id, std::map<size_t, Dialogue> &story) {
 }
 
 int main() {
-	std::string jsonText =
-		R"(
-		[{
-			"IsDialogue": true,
-			"ID": 0,
-			"NextID": 1,
-			"Text": "Hello, world"
-		},
-		{
-			"IsDialogue": true,
-			"ID": 1,
-			"NextID": 2,
-			"Text": "I am jack, who are you?"
-		},
-		{
-			"IsDialogue": false,
-			"ID": 2,
-			"Text": "What do you answer?",
-			"TotalChoices": 2,
-			"Choices": {
-				"0": {
-					"NextID": 3,
-					"Text": "I am Jane"
-				},
-				"1": {
-					"NextID": 4,
-					"Text": "Fuck you"
-				}
-			}
-		},
-		{
-			"IsDialogue": true,
-			"ID": 3,
-			"NextID": 0,
-			"Text": "Hi Jane"
-		},
-		{
-			"IsDialogue": true,
-			"ID": 4,
-			"NextID": 0,
-			"Text": "What? Fuck you!"
-		}]
-		)";
+	std::ifstream inputFile("story.json");
 
-	json data = json::parse(jsonText);
+	json data = json::parse(inputFile);
 
 	std::map<size_t, Dialogue> story;
 
