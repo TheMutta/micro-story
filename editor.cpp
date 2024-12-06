@@ -58,8 +58,10 @@ int main() {
 
 	std::map<size_t, Dialogue> story;
 
-	for (size_t i = 0; i < 5; ++i) {
+	for (size_t i = 0;; ++i) {
 		auto element = data[i];
+
+		if (element == nullptr) break;
 
 		story[i].ID = element["ID"];
 		story[i].Text = element["Text"];
