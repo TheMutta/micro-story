@@ -114,8 +114,6 @@ int main() {
 				size_t nextID = element["Choices"][std::to_string(j)]["NextID"];
 				std::string text = element["Choices"][std::to_string(j)]["Text"];
 				story[i].Choices[nextID] = text;
-	
-				std::cout << nextID << "->" << text << std::endl;
 			}
 		}
 	}
