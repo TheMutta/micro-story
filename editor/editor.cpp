@@ -141,7 +141,7 @@ int main(int, char**) {
 	// Our state
 	std::map<size_t, Dialogue> story;
 	bool createNodeWindow = false;
-	bool deleteNodeWindow = false;
+	bool removeNodeWindow = false;
 	bool addAnswerWindow = false;
 	bool removeAnswerWindow = false;
 	ImVec4 clearColor = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
@@ -187,8 +187,8 @@ int main(int, char**) {
 				if (ImGui::MenuItem("Create Node", "Ctrl+N")) {
 					createNodeWindow = true;
 				}
-				if (ImGui::MenuItem("Delete Node", "Ctrl+D")) {
-					deleteNodeWindow = true;
+				if (ImGui::MenuItem("Remove Node", "Ctrl+D")) {
+					removeNodeWindow = true;
 				}
 				ImGui::EndMenu();
 			}
@@ -246,6 +246,10 @@ int main(int, char**) {
 						if (ImGui::Button("Add answer")) {
 							addAnswerWindow = true;
 						}
+						ImGui::SameLine();
+						if (ImGui::Button("Remove answer")) {
+							removeAnswerWindow = true;
+						}
 
 						ImGui::EndTabItem();
 
@@ -285,6 +289,28 @@ int main(int, char**) {
 			ImGui::End();
 		}
 
+		if (removeAnswerWindow) {
+			static size_t id;
+
+			ImGui::Begin("Remove Answer", &removeAnswerWindow);
+
+			static char buffer[64] = {0};
+			if(ImGui::InputText("ID", buffer, IM_ARRAYSIZE(buffer), 0)) {
+				id = atoi(buffer);
+			}
+			
+			if (ImGui::Button("Remove Answer")) {
+				story[selected].Choices.erase(id);
+				removeAnswerWindow = false;
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Cancel")) {
+				removeAnswerWindow = false;
+			}
+
+			ImGui::End();
+		}
+
 
 		if (createNodeWindow) {
 			static Dialogue dialogue;
@@ -305,6 +331,28 @@ int main(int, char**) {
 			ImGui::SameLine();
 			if (ImGui::Button("Cancel")) {
 				createNodeWindow = false;
+			}
+
+			ImGui::End();
+		}
+
+		if (removeNodeWindow) {
+			static size_t id;
+
+			ImGui::Begin("Remove Node", &removeNodeWindow);
+
+			static char buffer[64] = {0};
+			if(ImGui::InputText("ID", buffer, IM_ARRAYSIZE(buffer), 0)) {
+				id = atoi(buffer);
+			}
+			
+			if (ImGui::Button("Remove Node")) {
+				story.erase(id);
+				removeNodeWindow = false;
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Cancel")) {
+				removeNodeWindow = false;
 			}
 
 			ImGui::End();
