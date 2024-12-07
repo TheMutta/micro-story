@@ -15,6 +15,7 @@ struct Dialogue {
 
 	std::string Text;
 
+	size_t TotalChoices;
 	std::map<size_t, std::string> Choices;
 };
 
@@ -71,7 +72,8 @@ int main() {
 			story[i].NextID = element["NextID"];
 		} else {
 			story[i].IsDialogue = false;
-			for(size_t j = 0; j < element["TotalChoices"]; ++j) {
+			story[i].TotalChoices = element["TotalChoices"];
+			for(size_t j = 0; j < story[i].TotalChoices; ++j) {
 				size_t nextID = element["Choices"][std::to_string(j)]["NextID"];
 				std::string text = element["Choices"][std::to_string(j)]["Text"];
 				story[i].Choices[nextID] = text;
@@ -83,4 +85,6 @@ int main() {
 	do {
 		PrintDialogue(id, story);
 	} while (NextDialogue(id, story));
+
+	std::cout << std::endl << "THE END" << std::endl;
 }

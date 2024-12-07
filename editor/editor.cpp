@@ -32,6 +32,7 @@ struct Dialogue {
 
 	std::string Text;
 
+	size_t TotalChoices;
 	std::map<size_t, std::string> Choices;
 };
 
@@ -53,7 +54,8 @@ void LoadStory(std::string filename, std::map<size_t, Dialogue> &story) {
 			story[i].NextID = element["NextID"];
 		} else {
 			story[i].IsDialogue = false;
-			for(size_t j = 0; j < element["TotalChoices"]; ++j) {
+			story[i].TotalChoices = element["TotalChoices"];
+			for(size_t j = 0; j < story[i].TotalChoices; ++j) {
 				size_t nextID = element["Choices"][std::to_string(j)]["NextID"];
 				std::string text = element["Choices"][std::to_string(j)]["Text"];
 				story[i].Choices[nextID] = text;
@@ -63,11 +65,32 @@ void LoadStory(std::string filename, std::map<size_t, Dialogue> &story) {
 }
 					
 void SaveStory(std::string filename, std::map<size_t, Dialogue> &story) {
-	/*json data = json::parse(story);
+	json data;
+
+	for (size_t i = 0; story.find(i) != story.end(); ++i) {
+		auto &element = data[i];
+
+		element["ID"] = story[i].ID;
+		element["TextID"] = story[i].Text;
+
+		if(story[i].IsDialogue) {
+			element["IsDialogue"] = true;
+			element["NextID"] = story[i].NextID;
+		} else {
+			element["IsDialogue"] = false;
+			size_t j = 0;
+			element["TotalChoices"] = story[i].TotalChoices;
+			for (auto [nextID, text] : story[i].Choices) {
+				element["Choices"][std::to_string(j)]["NextID"] = nextID;
+				element["Choices"][std::to_string(j)]["Text"] = text;
+				++j;
+			}
+		}
+	}
 
 	std::ofstream outputFile(filename);
 	outputFile  << std::setw(4) << data << std::endl;
-*/
+
 }
 
 
@@ -90,7 +113,7 @@ int main(int, char**) {
 
 	// Create window with SDL_Renderer graphics context
 	SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-	SDL_Window* window = SDL_CreateWindow("Dear ImGui SDL2+SDL_Renderer example", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
+	SDL_Window* window = SDL_CreateWindow("Story Editor", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
 	if (window == nullptr)	{
 		printf("Error: SDL_CreateWindow(): %s\n", SDL_GetError());
 		return -1;
@@ -119,6 +142,8 @@ int main(int, char**) {
 	std::map<size_t, Dialogue> story;
 	bool createNodeWindow = false;
 	bool deleteNodeWindow = false;
+	bool addAnswerWindow = false;
+	bool removeAnswerWindow = false;
 	ImVec4 clearColor = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	// Main loop
@@ -170,64 +195,118 @@ int main(int, char**) {
 			ImGui::EndMenuBar();
 		}
 
-		ImGui::Text("Hello from another window!");
+		static size_t selected = 0;
+		{
+			ImGui::BeginChild("left pane", ImVec2(150, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
+
+			for(auto [id, dial] : story) {
+				if (ImGui::Selectable(std::to_string(dial.ID).c_str(), selected == id)) {
+					selected = id;
+				}
+			}
+
+			ImGui::EndChild();
+		}
+		ImGui::SameLine();
+
+		{
+			ImGui::BeginGroup();
+			ImGui::BeginChild("item view", ImVec2(0, -ImGui::GetFrameHeightWithSpacing())); // Leave room for 1 line below us
+			ImGui::Text("ID: %lu", selected);
+			ImGui::Separator();
+			if (ImGui::BeginTabBar("##Tabs", ImGuiTabBarFlags_None)) {
+				auto &dial = story[selected];
+				if (ImGui::BeginTabItem("Info")) {
+					if (dial.IsDialogue) {
+						ImGui::Text("Next ID: %lu", dial.NextID);
+					} else {
+						ImGui::TextWrapped("Is a question");
+					}
+
+					ImGui::EndTabItem();
+				}
+				if (ImGui::BeginTabItem("Text")) {
+					ImGui::TextWrapped("%s", dial.Text.c_str());
+					ImGui::EndTabItem();
+				}
+				if (ImGui::BeginTabItem("Edit Text")) {
+					char buffer[1024 * 16];
+					strcpy(buffer, dial.Text.c_str());
+					if(ImGui::InputTextMultiline("Edit", buffer, IM_ARRAYSIZE(buffer), ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * 16), ImGuiInputTextFlags_CtrlEnterForNewLine | ImGuiInputTextFlags_EnterReturnsTrue)) {
+						dial.Text = std::string(buffer);
+					}
+					ImGui::EndTabItem();
+				}
+				if (!dial.IsDialogue) {
+					if (ImGui::BeginTabItem("Answers")) {
+						for(auto [id, text] : dial.Choices) {
+							ImGui::TextWrapped("%lu -> %s", id, text.c_str());
+						}
+
+						if (ImGui::Button("Add answer")) {
+							addAnswerWindow = true;
+						}
+
+						ImGui::EndTabItem();
+
+					}
+				}
+
+				ImGui::EndTabBar();
+			}
+			ImGui::EndChild();
+			ImGui::EndGroup();
+		}
+
 		ImGui::End();
 
+		if (addAnswerWindow) {
+			static size_t id;
+			static std::string data;
+
+			ImGui::Begin("Add Answer", &addAnswerWindow);
+
+			static char buffer[64] = {0};
+			if(ImGui::InputText("ID", buffer, IM_ARRAYSIZE(buffer), 0)) {
+				id = atoi(buffer);
+			}
+			
+			ImGui::InputText("Answer", &data);
+
+			if (ImGui::Button("Add Answer")) {
+				story[selected].Choices[id] = data;
+				addAnswerWindow = false;
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Cancel")) {
+				addAnswerWindow = false;
+			}
+
+			ImGui::End();
+		}
+
+
 		if (createNodeWindow) {
+			static Dialogue dialogue;
+
 			ImGui::Begin("Create Node", &createNodeWindow);
-			ImGui::Text("Hello from another window!");
-
-			/*
-			std::string text;
-			if(ImGui::InputText("Create", &text));
-			*/
-
-			if (ImGui::Button("Close Me"))
-				createNodeWindow = false;;
-			ImGui::End();
-		}
-
-		if (deleteNodeWindow) {
-			ImGui::Begin("Create Node", &createNodeWindow);
-			ImGui::Text("Hello from another window!");
-	
-			std::string text;
-			if(ImGui::InputText("Delete Node", &text)) {
+			
+			static char buffer[64] = {0};
+			if(ImGui::InputText("Edit", buffer, IM_ARRAYSIZE(buffer), 0)) {
+				dialogue.ID = atoi(buffer);
 			}
 
-			ImGui::Text("Node to delete : %s", text.c_str());
+			ImGui::Checkbox("Is dialogue?", &dialogue.IsDialogue);
 
-			if (ImGui::Button("Delete")) {
-				std::stringstream sstream(text);
-				size_t result;
-				sstream >> result;
-				if(story.find(result) != story.end()) {
-					story.erase(result);
-				}
+			if (ImGui::Button("Create Node")) {
+				story[dialogue.ID] = dialogue;
+				createNodeWindow = false;
 			}
-			ImGui::End();
-		}
-
-
-
-
-
-		for(auto [id, dial] : story) {
-			ImGui::Begin(std::to_string(dial.ID).c_str());
-
-			ImGui::Checkbox("Is dialogue", &dial.IsDialogue);
-			ImGui::Text("%s", dial.Text.c_str());
-
-			if (dial.IsDialogue) {
-				ImGui::Text("Next ID: %lu", dial.NextID);
-			} else {
-				ImGui::BeginChild("Choices");
-				for(auto [id, text] : dial.Choices) {
-					ImGui::Text("%lu -> %s", id, text.c_str());
-				}
-				ImGui::EndChild();
+			ImGui::SameLine();
+			if (ImGui::Button("Cancel")) {
+				createNodeWindow = false;
 			}
-	
+
 			ImGui::End();
 		}
 
