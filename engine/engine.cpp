@@ -52,8 +52,14 @@ bool NextDialogue(size_t &id, std::map<size_t, Dialogue> &story) {
 	return true;
 }
 
-int main() {
-	std::ifstream inputFile("story.json");
+int main(int argc, char **argv) {
+	std::string filename = "story.json";
+
+	if (argc == 2) {
+		filename = argv[1];
+	}
+
+	std::ifstream inputFile(filename);
 
 	json data = json::parse(inputFile);
 
