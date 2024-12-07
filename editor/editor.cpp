@@ -99,7 +99,7 @@ void SaveStory(std::string filename, std::map<size_t, Dialogue> &story) {
 #endif
 
 // Main code
-int main(int, char**) {
+int main(int argc, char **argv) {
 	// Setup SDL
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) {
 		printf("Error: %s\n", SDL_GetError());
@@ -180,7 +180,7 @@ int main(int, char**) {
 					LoadStory("story.json", story);
 				}
 				if (ImGui::MenuItem("Save", "Ctrl+S")) {
-					SaveStory("story.bak", story);
+					SaveStory("story.json", story);
 				}
 				ImGui::EndMenu();
 			}
@@ -284,6 +284,7 @@ int main(int, char**) {
 
 			if (ImGui::Button("Add Answer")) {
 				story[selected].Choices[id] = data;
+				story[selected].TotalChoices++;
 				addAnswerWindow = false;
 			}
 			ImGui::SameLine();
@@ -306,6 +307,7 @@ int main(int, char**) {
 			
 			if (ImGui::Button("Remove Answer")) {
 				story[selected].Choices.erase(id);
+				story[selected].TotalChoices--;
 				removeAnswerWindow = false;
 			}
 			ImGui::SameLine();
