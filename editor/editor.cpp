@@ -71,7 +71,7 @@ void SaveStory(std::string filename, std::map<size_t, Dialogue> &story) {
 		auto &element = data[i];
 
 		element["ID"] = story[i].ID;
-		element["TextID"] = story[i].Text;
+		element["Text"] = story[i].Text;
 
 		if(story[i].IsDialogue) {
 			element["IsDialogue"] = true;
@@ -144,6 +144,7 @@ int main(int, char**) {
 	bool removeNodeWindow = false;
 	bool addAnswerWindow = false;
 	bool removeAnswerWindow = false;
+	bool editNextIDWindow = false;
 	ImVec4 clearColor = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	// Main loop
@@ -219,6 +220,10 @@ int main(int, char**) {
 				if (ImGui::BeginTabItem("Info")) {
 					if (dial.IsDialogue) {
 						ImGui::Text("Next ID: %lu", dial.NextID);
+
+						if (ImGui::Button("Edit Next ID")) {
+							editNextIDWindow = true;
+						}
 					} else {
 						ImGui::TextWrapped("Is a question");
 					}
@@ -353,6 +358,28 @@ int main(int, char**) {
 			ImGui::SameLine();
 			if (ImGui::Button("Cancel")) {
 				removeNodeWindow = false;
+			}
+
+			ImGui::End();
+		}
+
+		if (editNextIDWindow) {
+			static size_t id;
+
+			ImGui::Begin("Remove Answer", &editNextIDWindow);
+
+			static char buffer[64] = {0};
+			if(ImGui::InputText("NextID", buffer, IM_ARRAYSIZE(buffer), 0)) {
+				id = atoi(buffer);
+			}
+			
+			if (ImGui::Button("Alter NextID")) {
+				story[selected].NextID = id;
+				editNextIDWindow = false;
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Cancel")) {
+				editNextIDWindow = false;
 			}
 
 			ImGui::End();
