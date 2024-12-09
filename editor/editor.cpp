@@ -48,7 +48,7 @@ struct Chapter {
 
 	std::string Name;
 
-	size_t ParagraphCount;
+	size_t TotalParagraphs;
 	std::map<size_t, Dialogue> Paragraphs;
 };
 
@@ -68,9 +68,9 @@ void LoadStory(std::string filename, std::map<size_t, Chapter> &story) {
 
 		story[chapterIdx].ID = chapter["ID"];
 		story[chapterIdx].Name = chapter["Name"];
-		story[chapterIdx].ParagraphCount = chapter["ParagraphCount"];
+		story[chapterIdx].TotalParagraphs = chapter["TotalParagraphs"];
 
-		for (size_t paragraphIdx = 0; paragraphIdx < story[chapterIdx].ParagraphCount; ++paragraphIdx) {		
+		for (size_t paragraphIdx = 0; paragraphIdx < story[chapterIdx].TotalParagraphs; ++paragraphIdx) {		
 			auto paragraph = chapter[std::to_string(chapterIdx)]["Paragraphs"];
 			if (paragraph == nullptr) break;
 
@@ -105,8 +105,8 @@ void SaveStory(std::string filename, std::map<size_t, Chapter> &story) {
 
 		chapter["ID"] = story[chapterIdx].ID;
 		chapter["Name"] = story[chapterIdx].Name;
-		chapter["ParagraphCount"] = story[chapterIdx].ParagraphCount;
-		for (size_t paragraphIdx = 0; paragraphIdx < story[chapterIdx].ParagraphCount; ++paragraphIdx) {		
+		chapter["TotalParagraphs"] = story[chapterIdx].TotalParagraphs;
+		for (size_t paragraphIdx = 0; paragraphIdx < story[chapterIdx].TotalParagraphs; ++paragraphIdx) {		
 			auto &paragraph = chapter[std::to_string(chapterIdx)]["Paragraphs"];
 		
 			if (story[chapterIdx].Paragraphs.find(paragraphIdx) == story[chapterIdx].Paragraphs.end()) break;
@@ -185,7 +185,7 @@ int main(int argc, char **argv) {
 	for (int i = 0; i < 4; ++i) {
 		story[i].ID = i;
 		story[i].Name = std::string("Chapter ") + std::to_string(i);
-		story[i].ParagraphCount = 8;
+		story[i].TotalParagraphs = 8;
 
 		for (int j = 0; j < 8; ++j) {
 			story[i].Paragraphs[j].ID = j;
@@ -274,7 +274,8 @@ int main(int argc, char **argv) {
 			ImGui::Text("Chapter: %s", story[selectedChapter].Name.c_str());
 			ImGui::Separator();
 			if (ImGui::BeginTabBar("##ChapterTabs", ImGuiTabBarFlags_None)) {
-				if (ImGui::BeginTabItem("Info")) {
+				if (ImGui::BeginTabItem("Chapter Info")) {
+					ImGui::TextWrapped("Paragraph count: %lu", story[selectedChapter].TotalParagraphs);
 					ImGui::EndTabItem();
 				}
 
@@ -298,10 +299,51 @@ int main(int argc, char **argv) {
 					ImGui::Text("ID: %lu", selectedParagraph);
 					ImGui::Separator();
 					if (ImGui::BeginTabBar("##ParagraphTabs", ImGuiTabBarFlags_None)) {
-						if (ImGui::BeginTabItem("Info")) {
+						auto &dial = story[selectedChapter].Paragraphs[selectedParagraph];
+						if (ImGui::BeginTabItem("Paragraph Info")) {
+							if (dial.IsDialogue) {
+								ImGui::TextWrapped("Next ID: %lu", dial.NextID);
+
+								if (ImGui::Button("Edit Next ID")) {
+									editNextIDWindow = true;
+								}
+							} else {
+								ImGui::TextWrapped("Is a question");
+							}
+
 							ImGui::EndTabItem();
 						}
-				
+						if (ImGui::BeginTabItem("Text")) {
+							ImGui::TextWrapped("%s", dial.Text.c_str());
+							ImGui::EndTabItem();
+						}
+						if (ImGui::BeginTabItem("Edit Text")) {
+							char buffer[1024 * 16];
+							strcpy(buffer, dial.Text.c_str());
+							if(ImGui::InputTextMultiline("Edit", buffer, IM_ARRAYSIZE(buffer), ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * 16), ImGuiInputTextFlags_CtrlEnterForNewLine | ImGuiInputTextFlags_EnterReturnsTrue)) {
+								dial.Text = std::string(buffer);
+							}
+							ImGui::EndTabItem();
+						}
+						if (!dial.IsDialogue) {
+							if (ImGui::BeginTabItem("Answers")) {
+								for(auto [id, text] : dial.Choices) {
+									ImGui::TextWrapped("%lu -> %s", id, text.c_str());
+								}
+
+								if (ImGui::Button("Add answer")) {
+									addAnswerWindow = true;
+								}
+								ImGui::SameLine();
+								if (ImGui::Button("Remove answer")) {
+									removeAnswerWindow = true;
+								}
+
+								ImGui::EndTabItem();
+
+							}
+						}
+
 						ImGui::EndTabBar();
 					}
 
