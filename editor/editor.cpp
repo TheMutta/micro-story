@@ -182,6 +182,9 @@ int main(int argc, char **argv) {
 				if (ImGui::MenuItem("Save", "Ctrl+S")) {
 					SaveStory("story.json", story);
 				}
+				if (ImGui::MenuItem("Quit", "Ctrl+Q")) {
+					done = true;
+				}
 				ImGui::EndMenu();
 			}
 			if (ImGui::BeginMenu("Edit")) {
