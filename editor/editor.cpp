@@ -255,6 +255,7 @@ int main(int argc, char **argv) {
 		}
 
 		static size_t selectedChapter = 0;
+		static size_t selectedParagraph = 0;
 		{
 			ImGui::BeginChild("chapter pane", ImVec2(150, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
 
@@ -280,7 +281,6 @@ int main(int argc, char **argv) {
 				}
 
 				if (ImGui::BeginTabItem("Paragraphs")) {
-					static size_t selectedParagraph = 0;
 					{
 						ImGui::BeginChild("Paragraph Pane", ImVec2(150, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
 	
@@ -365,7 +365,6 @@ int main(int argc, char **argv) {
 
 		ImGui::End();
 
-		/*
 		if (addAnswerWindow) {
 			static size_t id;
 			static std::string data;
@@ -380,8 +379,8 @@ int main(int argc, char **argv) {
 			ImGui::InputText("Answer", &data);
 
 			if (ImGui::Button("Add Answer")) {
-				story[selected].Choices[id] = data;
-				story[selected].TotalChoices++;
+				story[selectedChapter].Paragraphs[selectedParagraph].Choices[id] = data;
+				story[selectedChapter].Paragraphs[selectedParagraph].TotalChoices++;
 				addAnswerWindow = false;
 			}
 			ImGui::SameLine();
@@ -403,8 +402,8 @@ int main(int argc, char **argv) {
 			}
 			
 			if (ImGui::Button("Remove Answer")) {
-				story[selected].Choices.erase(id);
-				story[selected].TotalChoices--;
+				story[selectedChapter].Paragraphs[selectedParagraph].Choices.erase(id);
+				story[selectedChapter].Paragraphs[selectedParagraph].TotalChoices--;
 				removeAnswerWindow = false;
 			}
 			ImGui::SameLine();
@@ -429,7 +428,7 @@ int main(int argc, char **argv) {
 			ImGui::Checkbox("Is dialogue?", &dialogue.IsDialogue);
 
 			if (ImGui::Button("Create Node")) {
-				story[dialogue.ID] = dialogue;
+				story[selectedChapter].Paragraphs[dialogue.ID] = dialogue;
 				createNodeWindow = false;
 			}
 			ImGui::SameLine();
@@ -451,7 +450,7 @@ int main(int argc, char **argv) {
 			}
 			
 			if (ImGui::Button("Remove Node")) {
-				story.erase(id);
+				story[selectedChapter].Paragraphs.erase(id);
 				removeNodeWindow = false;
 			}
 			ImGui::SameLine();
@@ -473,7 +472,7 @@ int main(int argc, char **argv) {
 			}
 			
 			if (ImGui::Button("Alter NextID")) {
-				story[selected].NextID = id;
+				story[selectedChapter].Paragraphs[selectedParagraph].NextID = id;
 				editNextIDWindow = false;
 			}
 			ImGui::SameLine();
@@ -482,7 +481,7 @@ int main(int argc, char **argv) {
 			}
 
 			ImGui::End();
-		}*/
+		}
 
 		// Rendering
 		ImGui::Render();
