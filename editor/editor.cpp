@@ -24,66 +24,108 @@
 
 using json = nlohmann::json;
 
+struct Character {
+	size_t ID;
+
+	std::string Name;
+};
+
 struct Dialogue {
 	bool IsDialogue;
 
 	size_t ID;
 	size_t NextID;
 
+	size_t Character;
 	std::string Text;
 
 	size_t TotalChoices;
 	std::map<size_t, std::string> Choices;
 };
 
-void LoadStory(std::string filename, std::map<size_t, Dialogue> &story) {
+struct Chapter {
+	size_t ID;
+
+	std::string Name;
+
+	size_t ParagraphCount;
+	std::map<size_t, Dialogue> Paragraphs;
+};
+
+struct StoryData {
+	std::map<size_t, Character> Characters;
+	std::map<size_t, Chapter> Chapters;
+};
+
+void LoadStory(std::string filename, std::map<size_t, Chapter> &story) {
 	std::ifstream inputFile(filename);
 
 	json data = json::parse(inputFile);
 
-	for (size_t i = 0;; ++i) {
-		auto element = data[i];
+	for (size_t chapterIdx = 0;; ++chapterIdx) {
+		auto chapter = data[chapterIdx];
+		if (chapter == nullptr) break;
 
-		if (element == nullptr) break;
+		story[chapterIdx].ID = chapter["ID"];
+		story[chapterIdx].Name = chapter["Name"];
+		story[chapterIdx].ParagraphCount = chapter["ParagraphCount"];
 
-		story[i].ID = element["ID"];
-		story[i].Text = element["Text"];
+		for (size_t paragraphIdx = 0; paragraphIdx < story[chapterIdx].ParagraphCount; ++paragraphIdx) {		
+			auto paragraph = chapter[std::to_string(chapterIdx)]["Paragraphs"];
+			if (paragraph == nullptr) break;
 
-		if(element["IsDialogue"]) {
-			story[i].IsDialogue = true;
-			story[i].NextID = element["NextID"];
-		} else {
-			story[i].IsDialogue = false;
-			story[i].TotalChoices = element["TotalChoices"];
-			for(size_t j = 0; j < story[i].TotalChoices; ++j) {
-				size_t nextID = element["Choices"][std::to_string(j)]["NextID"];
-				std::string text = element["Choices"][std::to_string(j)]["Text"];
-				story[i].Choices[nextID] = text;
+			story[chapterIdx].Paragraphs[paragraphIdx].ID = paragraph["ID"];
+			story[chapterIdx].Paragraphs[paragraphIdx].Text = paragraph["Text"];
+			story[chapterIdx].Paragraphs[paragraphIdx].Character = paragraph["Character"];
+
+			if(paragraph["IsDialogue"]) {
+				story[chapterIdx].Paragraphs[paragraphIdx].IsDialogue = true;
+				story[chapterIdx].Paragraphs[paragraphIdx].NextID = paragraph["NextID"];
+			} else {
+				story[chapterIdx].Paragraphs[paragraphIdx].IsDialogue = false;
+				story[chapterIdx].Paragraphs[paragraphIdx].TotalChoices = paragraph["TotalChoices"];
+				
+				size_t j = 0;
+				for (auto [nextID, text] : story[chapterIdx].Paragraphs[paragraphIdx].Choices) {
+	                             	paragraph["Choices"][std::to_string(j)]["NextID"] = nextID;
+					paragraph["Choices"][std::to_string(j)]["Text"] = text;
+					++j;
+				}
 			}
 		}
 	}
 }
 					
-void SaveStory(std::string filename, std::map<size_t, Dialogue> &story) {
+void SaveStory(std::string filename, std::map<size_t, Chapter> &story) {
 	json data;
 
-	for (size_t i = 0; story.find(i) != story.end(); ++i) {
-		auto &element = data[i];
+	for (size_t chapterIdx = 0;; ++chapterIdx) {
+		auto &chapter = data[chapterIdx];
+		if (story.find(chapterIdx) == story.end()) break;
 
-		element["ID"] = story[i].ID;
-		element["Text"] = story[i].Text;
+		chapter["ID"] = story[chapterIdx].ID;
+		chapter["Name"] = story[chapterIdx].Name;
+		chapter["ParagraphCount"] = story[chapterIdx].ParagraphCount;
+		for (size_t paragraphIdx = 0; paragraphIdx < story[chapterIdx].ParagraphCount; ++paragraphIdx) {		
+			auto &paragraph = chapter[std::to_string(chapterIdx)]["Paragraphs"];
+		
+			if (story[chapterIdx].Paragraphs.find(paragraphIdx) == story[chapterIdx].Paragraphs.end()) break;
 
-		if(story[i].IsDialogue) {
-			element["IsDialogue"] = true;
-			element["NextID"] = story[i].NextID;
-		} else {
-			element["IsDialogue"] = false;
-			size_t j = 0;
-			element["TotalChoices"] = story[i].TotalChoices;
-			for (auto [nextID, text] : story[i].Choices) {
-				element["Choices"][std::to_string(j)]["NextID"] = nextID;
-				element["Choices"][std::to_string(j)]["Text"] = text;
-				++j;
+			paragraph["ID"] = story[chapterIdx].Paragraphs[paragraphIdx].ID;
+			paragraph["Text"] = story[chapterIdx].Paragraphs[paragraphIdx].Text;
+			paragraph["Character"] = story[chapterIdx].Paragraphs[paragraphIdx].Character;
+
+			if(story[chapterIdx].Paragraphs[paragraphIdx].IsDialogue) {
+				paragraph["IsDialogue"] = true;
+				paragraph["NextID"] = story[chapterIdx].Paragraphs[paragraphIdx].NextID;
+			} else {
+				paragraph["IsDialogue"] = false;
+				paragraph["TotalChoices"] = story[chapterIdx].Paragraphs[paragraphIdx].TotalChoices;
+				for(size_t j = 0; j < story[chapterIdx].Paragraphs[paragraphIdx].TotalChoices; ++j) {
+					size_t nextID = paragraph["Choices"][std::to_string(j)]["NextID"];
+					std::string text = paragraph["Choices"][std::to_string(j)]["Text"];
+					story[chapterIdx].Paragraphs[paragraphIdx].Choices[nextID] = text;
+				}
 			}
 		}
 	}
@@ -139,7 +181,20 @@ int main(int argc, char **argv) {
 	ImGui_ImplSDLRenderer2_Init(renderer);
 
 	// Our state
-	std::map<size_t, Dialogue> story;
+	std::map<size_t, Chapter> story;
+	for (int i = 0; i < 4; ++i) {
+		story[i].ID = i;
+		story[i].Name = std::string("Chapter ") + std::to_string(i);
+		story[i].ParagraphCount = 8;
+
+		for (int j = 0; j < 8; ++j) {
+			story[i].Paragraphs[j].ID = j;
+			story[i].Paragraphs[j].IsDialogue = true;
+			story[i].Paragraphs[j].Text = "Hello, world!";
+		}
+	}
+
+
 	bool createNodeWindow = false;
 	bool removeNodeWindow = false;
 	bool addAnswerWindow = false;
@@ -188,10 +243,10 @@ int main(int argc, char **argv) {
 				ImGui::EndMenu();
 			}
 			if (ImGui::BeginMenu("Edit")) {
-				if (ImGui::MenuItem("Create Node", "Ctrl+N")) {
+				if (ImGui::MenuItem("Create Chapter", "Ctrl+N")) {
 					createNodeWindow = true;
 				}
-				if (ImGui::MenuItem("Remove Node", "Ctrl+D")) {
+				if (ImGui::MenuItem("Remove Chapter", "Ctrl+D")) {
 					removeNodeWindow = true;
 				}
 				ImGui::EndMenu();
@@ -199,13 +254,13 @@ int main(int argc, char **argv) {
 			ImGui::EndMenuBar();
 		}
 
-		static size_t selected = 0;
+		static size_t selectedChapter = 0;
 		{
-			ImGui::BeginChild("left pane", ImVec2(150, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
+			ImGui::BeginChild("chapter pane", ImVec2(150, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
 
-			for(auto [id, dial] : story) {
-				if (ImGui::Selectable(std::to_string(dial.ID).c_str(), selected == id)) {
-					selected = id;
+			for(auto [id, chapter] : story) {
+				if (ImGui::Selectable(std::to_string(chapter.ID).c_str(), selectedChapter == id)) {
+					selectedChapter = id;
 				}
 			}
 
@@ -215,56 +270,52 @@ int main(int argc, char **argv) {
 
 		{
 			ImGui::BeginGroup();
-			ImGui::BeginChild("item view", ImVec2(0, -ImGui::GetFrameHeightWithSpacing())); // Leave room for 1 line below us
-			ImGui::Text("ID: %lu", selected);
+			ImGui::BeginChild("Chapter View", ImVec2(0, -ImGui::GetFrameHeightWithSpacing())); // Leave room for 1 line below us
+			ImGui::Text("Chapter: %s", story[selectedChapter].Name.c_str());
 			ImGui::Separator();
-			if (ImGui::BeginTabBar("##Tabs", ImGuiTabBarFlags_None)) {
-				auto &dial = story[selected];
+			if (ImGui::BeginTabBar("##ChapterTabs", ImGuiTabBarFlags_None)) {
 				if (ImGui::BeginTabItem("Info")) {
-					if (dial.IsDialogue) {
-						ImGui::Text("Next ID: %lu", dial.NextID);
-
-						if (ImGui::Button("Edit Next ID")) {
-							editNextIDWindow = true;
-						}
-					} else {
-						ImGui::TextWrapped("Is a question");
-					}
-
 					ImGui::EndTabItem();
 				}
-				if (ImGui::BeginTabItem("Text")) {
-					ImGui::TextWrapped("%s", dial.Text.c_str());
-					ImGui::EndTabItem();
-				}
-				if (ImGui::BeginTabItem("Edit Text")) {
-					char buffer[1024 * 16];
-					strcpy(buffer, dial.Text.c_str());
-					if(ImGui::InputTextMultiline("Edit", buffer, IM_ARRAYSIZE(buffer), ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * 16), ImGuiInputTextFlags_CtrlEnterForNewLine | ImGuiInputTextFlags_EnterReturnsTrue)) {
-						dial.Text = std::string(buffer);
+
+				if (ImGui::BeginTabItem("Paragraphs")) {
+					static size_t selectedParagraph = 0;
+					{
+						ImGui::BeginChild("Paragraph Pane", ImVec2(150, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
+	
+						for(auto [id, paragraph] : story[selectedChapter].Paragraphs) {
+							if (ImGui::Selectable(std::to_string(paragraph.ID).c_str(), selectedParagraph == id)) {
+								selectedParagraph = id;
+							}
+						}
+
+						ImGui::EndChild();
 					}
-					ImGui::EndTabItem();
-				}
-				if (!dial.IsDialogue) {
-					if (ImGui::BeginTabItem("Answers")) {
-						for(auto [id, text] : dial.Choices) {
-							ImGui::TextWrapped("%lu -> %s", id, text.c_str());
+		
+					ImGui::SameLine();
+					ImGui::BeginGroup();
+					ImGui::BeginChild("Paragraph View", ImVec2(0, -ImGui::GetFrameHeightWithSpacing())); // Leave room for 1 line below us
+					ImGui::Text("ID: %lu", selectedParagraph);
+					ImGui::Separator();
+					if (ImGui::BeginTabBar("##ParagraphTabs", ImGuiTabBarFlags_None)) {
+						if (ImGui::BeginTabItem("Info")) {
+							ImGui::EndTabItem();
 						}
-
-						if (ImGui::Button("Add answer")) {
-							addAnswerWindow = true;
-						}
-						ImGui::SameLine();
-						if (ImGui::Button("Remove answer")) {
-							removeAnswerWindow = true;
-						}
-
-						ImGui::EndTabItem();
-
+				
+						ImGui::EndTabBar();
 					}
+
+					ImGui::EndChild();
+					ImGui::EndGroup();
+
+					ImGui::EndTabItem();
+				
 				}
 
+
+						
 				ImGui::EndTabBar();
+
 			}
 			ImGui::EndChild();
 			ImGui::EndGroup();
@@ -272,6 +323,7 @@ int main(int argc, char **argv) {
 
 		ImGui::End();
 
+		/*
 		if (addAnswerWindow) {
 			static size_t id;
 			static std::string data;
@@ -388,7 +440,7 @@ int main(int argc, char **argv) {
 			}
 
 			ImGui::End();
-		}
+		}*/
 
 		// Rendering
 		ImGui::Render();
