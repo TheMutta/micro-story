@@ -71,7 +71,7 @@ void LoadStory(std::string filename, std::map<size_t, Chapter> &story) {
 		story[chapterIdx].TotalParagraphs = chapter["TotalParagraphs"];
 
 		for (size_t paragraphIdx = 0; paragraphIdx < story[chapterIdx].TotalParagraphs; ++paragraphIdx) {		
-			auto paragraph = chapter[std::to_string(chapterIdx)]["Paragraphs"];
+			auto paragraph = chapter[std::to_string(chapterIdx)]["Paragraphs"][std::to_string(paragraphIdx)];
 			if (paragraph == nullptr) break;
 
 			story[chapterIdx].Paragraphs[paragraphIdx].ID = paragraph["ID"];
@@ -85,11 +85,10 @@ void LoadStory(std::string filename, std::map<size_t, Chapter> &story) {
 				story[chapterIdx].Paragraphs[paragraphIdx].IsDialogue = false;
 				story[chapterIdx].Paragraphs[paragraphIdx].TotalChoices = paragraph["TotalChoices"];
 				
-				size_t j = 0;
-				for (auto [nextID, text] : story[chapterIdx].Paragraphs[paragraphIdx].Choices) {
-	                             	paragraph["Choices"][std::to_string(j)]["NextID"] = nextID;
-					paragraph["Choices"][std::to_string(j)]["Text"] = text;
-					++j;
+				for(size_t j = 0; j < story[chapterIdx].Paragraphs[paragraphIdx].TotalChoices; ++j) {
+					size_t nextID = paragraph["Choices"][std::to_string(j)]["NextID"];
+					std::string text = paragraph["Choices"][std::to_string(j)]["Text"];
+					story[chapterIdx].Paragraphs[paragraphIdx].Choices[nextID] = text;
 				}
 			}
 		}
@@ -106,25 +105,25 @@ void SaveStory(std::string filename, std::map<size_t, Chapter> &story) {
 		chapter["ID"] = story[chapterIdx].ID;
 		chapter["Name"] = story[chapterIdx].Name;
 		chapter["TotalParagraphs"] = story[chapterIdx].TotalParagraphs;
-		for (size_t paragraphIdx = 0; paragraphIdx < story[chapterIdx].TotalParagraphs; ++paragraphIdx) {		
-			auto &paragraph = chapter[std::to_string(chapterIdx)]["Paragraphs"];
+		for(auto [paragraphIdx, paragraphData] : story[chapterIdx].Paragraphs) {		
+			auto &paragraph = chapter[std::to_string(chapterIdx)]["Paragraphs"][std::to_string(paragraphIdx)];
 		
-			if (story[chapterIdx].Paragraphs.find(paragraphIdx) == story[chapterIdx].Paragraphs.end()) break;
+			paragraph["ID"] = paragraphData.ID;
+			paragraph["Text"] = paragraphData.Text;
+			paragraph["Character"] = paragraphData.Character;
 
-			paragraph["ID"] = story[chapterIdx].Paragraphs[paragraphIdx].ID;
-			paragraph["Text"] = story[chapterIdx].Paragraphs[paragraphIdx].Text;
-			paragraph["Character"] = story[chapterIdx].Paragraphs[paragraphIdx].Character;
-
-			if(story[chapterIdx].Paragraphs[paragraphIdx].IsDialogue) {
+			if(paragraphData.IsDialogue) {
 				paragraph["IsDialogue"] = true;
-				paragraph["NextID"] = story[chapterIdx].Paragraphs[paragraphIdx].NextID;
+				paragraph["NextID"] = paragraphData.NextID;
 			} else {
 				paragraph["IsDialogue"] = false;
-				paragraph["TotalChoices"] = story[chapterIdx].Paragraphs[paragraphIdx].TotalChoices;
-				for(size_t j = 0; j < story[chapterIdx].Paragraphs[paragraphIdx].TotalChoices; ++j) {
-					size_t nextID = paragraph["Choices"][std::to_string(j)]["NextID"];
-					std::string text = paragraph["Choices"][std::to_string(j)]["Text"];
-					story[chapterIdx].Paragraphs[paragraphIdx].Choices[nextID] = text;
+				paragraph["TotalChoices"] = paragraphData.TotalChoices;
+
+				size_t j = 0;
+				for (auto [nextID, text] : paragraphData.Choices) {
+	                             	paragraph["Choices"][std::to_string(j)]["NextID"] = nextID;
+					paragraph["Choices"][std::to_string(j)]["Text"] = text;
+					++j;
 				}
 			}
 		}
@@ -182,6 +181,7 @@ int main(int argc, char **argv) {
 
 	// Our state
 	std::map<size_t, Chapter> story;
+	/*
 	for (int i = 0; i < 4; ++i) {
 		story[i].ID = i;
 		story[i].Name = std::string("Chapter ") + std::to_string(i);
@@ -193,7 +193,7 @@ int main(int argc, char **argv) {
 			story[i].Paragraphs[j].Text = "Hello, world!";
 		}
 	}
-
+*/
 
 	bool createNodeWindow = false;
 	bool removeNodeWindow = false;
